@@ -1,13 +1,11 @@
 package com.statestreet.carrental.storage;
 
 import com.statestreet.carrental.cars.Car;
+import com.statestreet.carrental.cars.CarType;
 import com.statestreet.carrental.clients.Client;
 import com.statestreet.carrental.reservations.Reservation;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.concurrent.locks.StampedLock;
 import java.util.function.Predicate;
 
@@ -15,8 +13,14 @@ import static com.statestreet.carrental.cars.CarStatus.UNAVAILABLE;
 
 public class StorageServiceImpl implements StorageService {
 
-    public static final int DEFAULT_MAX_NUMBER_OF_CARS = 10;
-    private final int maxNumberOfCars;
+    private final static EnumMap<CarType, Integer> DEFAULT_CARS_LIMITS = new EnumMap<>(CarType.class);
+    static {
+        DEFAULT_CARS_LIMITS.put(CarType.SUV, 10);
+        DEFAULT_CARS_LIMITS.put(CarType.SEDAN, 10);
+        DEFAULT_CARS_LIMITS.put(CarType.VAN, 10);
+    }
+
+    private final EnumMap<CarType, Integer> carsLimits;
 
     private final Map<String, Car> vinToCar = new HashMap<>();
     private final StampedLock carsLock = new StampedLock();
@@ -27,13 +31,12 @@ public class StorageServiceImpl implements StorageService {
     private final List<Reservation> reservations = new ArrayList<>();
     private final StampedLock reservationsLock = new StampedLock();
 
-
     public StorageServiceImpl() {
-        this.maxNumberOfCars = DEFAULT_MAX_NUMBER_OF_CARS;
+        this.carsLimits = DEFAULT_CARS_LIMITS;
     }
 
-    public StorageServiceImpl(int maxNumberOfCars) {
-        this.maxNumberOfCars = maxNumberOfCars;
+    public StorageServiceImpl(EnumMap<CarType, Integer> carsLimits) {
+        this.carsLimits = carsLimits;
     }
 
     @Override
@@ -43,8 +46,9 @@ public class StorageServiceImpl implements StorageService {
             if (vinToCar.containsKey(car.vinNumber())) {
                 throw new StorageException("Car " + car + " already present in the storage");
             }
-            if (vinToCar.size() == maxNumberOfCars) {
-                throw new StorageException("Max number of " + maxNumberOfCars + " reached");
+            Integer carsLimit = carsLimits.get(car.type());
+            if (vinToCar.values().stream().filter(existingCar -> existingCar.type() == car.type()).count() == carsLimit) {
+                throw new StorageException("Max number of " + carsLimit + " reached");
             }
             vinToCar.put(car.vinNumber(), car);
         } finally {
