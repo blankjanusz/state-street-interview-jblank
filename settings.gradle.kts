@@ -1,0 +1,1 @@
+rootProject.name = "state-street-interview-jblank"
