@@ -15,6 +15,17 @@ import static com.statestreet.carrental.cars.CarStatus.UNAVAILABLE;
 
 public class StorageServiceImpl implements StorageService {
 
+    public static final int DEFAULT_MAX_NUMBER_OF_CARS = 10;
+    private final int maxNumberOfCars;
+
+    public StorageServiceImpl() {
+        this.maxNumberOfCars = DEFAULT_MAX_NUMBER_OF_CARS;
+    }
+
+    public StorageServiceImpl(int maxNumberOfCars) {
+        this.maxNumberOfCars = maxNumberOfCars;
+    }
+
     private final Map<String, Car> vinToCar = new HashMap<>();
     private final StampedLock carsLock = new StampedLock();
 
@@ -30,6 +41,9 @@ public class StorageServiceImpl implements StorageService {
         try {
             if (vinToCar.containsKey(car.vinNumber())) {
                 throw new StorageException("Car " + car + " already present in the storage");
+            }
+            if (vinToCar.size() == maxNumberOfCars) {
+                throw new StorageException("Max number of " + maxNumberOfCars + " reached");
             }
             vinToCar.put(car.vinNumber(), car);
         } finally {

@@ -17,9 +17,11 @@ public class CarServiceImpl implements CarService {
     }
 
     @Override
-    public void addCar(CarType type, String vinNumber) throws StorageException, ValidationException {
+    public Car addCar(CarType type, String vinNumber) throws StorageException, ValidationException {
         Validators.validateVin(vinNumber);
-        storageService.addCar(new Car(type, vinNumber));
+        Car newCar = new Car(type, vinNumber);
+        storageService.addCar(newCar);
+        return newCar;
     }
 
     @Override

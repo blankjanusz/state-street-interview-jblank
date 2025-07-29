@@ -1,37 +1,19 @@
 package com.statestreet.carrental.storage;
 
+import com.statestreet.carrental.AbstractStorageTest;
 import com.statestreet.carrental.cars.Car;
 import com.statestreet.carrental.cars.CarStatus;
-import com.statestreet.carrental.cars.CarType;
-import com.statestreet.carrental.clients.Client;
-import com.statestreet.carrental.util.ValidationException;
+import com.statestreet.carrental.reservations.Reservation;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-public class StorageServiceImplTest {
-
-    private static final String VIN = "JBLVA2AE4EH877001";
-    private static final String VIN2 = "JBLVA2AE4EH877002";
-    private static final String VIN3 = "JBLVA2AE4EH877003";
-
-    private static final Car car;
-    private static final Car car2;
-
-    private static final Client client;
-
-    static {
-            car = new Car(CarType.SUV, VIN);
-            car2 = new Car(CarType.SUV, VIN2);
-
-            client = new Client("Janusz", "Blank", "82031200000");
-
-    }
+public class StorageServiceImplTest extends AbstractStorageTest {
 
     @Test
-    public void addCarTest() throws ValidationException {
+    public void addCarTest() {
         StorageService storageService = new StorageServiceImpl();
 
         assertDoesNotThrow(() -> storageService.addCar(car));
@@ -39,7 +21,7 @@ public class StorageServiceImplTest {
     }
 
     @Test
-    public void removeCarTest() throws ValidationException {
+    public void removeCarTest() {
         StorageService storageService = new StorageServiceImpl();
 
         assertThrows(StorageException.class, () -> storageService.removeCar(car.vinNumber())); // no such car
@@ -49,22 +31,25 @@ public class StorageServiceImplTest {
     }
 
     @Test
-    public void getCarsTest() throws ValidationException {
+    public void getCarsTest() {
         StorageService storageService = new StorageServiceImpl();
 
         assertDoesNotThrow(() -> storageService.addCar(car));
         assertDoesNotThrow(() -> storageService.addCar(car2));
 
-        List<Car> cars = storageService.getCars(carStatus -> carStatus == CarStatus.AVAILABLE);
+        List<Car> cars = storageService.getCars(car -> car.carStatus() == CarStatus.AVAILABLE);
         assertEquals(2, cars.size());
         assertTrue(cars.contains(car));
         assertTrue(cars.contains(car2));
 
         assertDoesNotThrow(() -> storageService.removeCar(car.vinNumber()));
-        cars = storageService.getCars(carStatus -> carStatus == CarStatus.AVAILABLE);
+        cars = storageService.getCars(car -> car.carStatus() == CarStatus.AVAILABLE);
         assertEquals(1, cars.size());
-        assertFalse(cars.contains(car));
-        assertTrue(cars.contains(car2));
+        assertEquals(VIN2, cars.getFirst().vinNumber());
+
+        cars = storageService.getCars(car -> car.carStatus() == CarStatus.UNAVAILABLE);
+        assertEquals(1, cars.size());
+        assertEquals(VIN, cars.getFirst().vinNumber());
     }
 
     @Test
@@ -77,6 +62,21 @@ public class StorageServiceImplTest {
         assertEquals(0, storageService.getClients().size());
     }
 
+    @Test
+    public void reservationsCRUDTest() {
+        StorageService storageService = new StorageServiceImpl();
+        Reservation reservation = new Reservation(car, client, date, date.plusDays(1));
+        Reservation reservation2 = new Reservation(car2, client2, date2, date2.plusDays(2));
 
+        assertDoesNotThrow(() -> storageService.addReservation(reservation));
+        assertThrows(StorageException.class, () -> storageService.addReservation(reservation));
+
+        assertDoesNotThrow(() -> storageService.addReservation(reservation2));
+        assertEquals(1,
+        storageService.getReservations(res -> res.client().peselNumber().equals(PESEL)).size());
+
+        assertDoesNotThrow(() -> storageService.removeReservation(reservation));
+        assertThrows(StorageException.class, () -> storageService.removeReservation(reservation));
+    }
 
 }

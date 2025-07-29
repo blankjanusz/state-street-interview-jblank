@@ -11,7 +11,8 @@ import java.util.function.Predicate;
 
 public interface ReservationService {
 
-    void addReservation(Car car, Client client, LocalDateTime startDate, int numberOfDays) throws StorageException, ValidationException;
+    Reservation addReservation(Car car, Client client, LocalDateTime startDate, int numberOfDays)
+            throws StorageException, ValidationException, ReservationException;
     void removeReservation(Reservation reservation) throws StorageException;
     List<Reservation> getReservations(Predicate<Reservation> filter);
 
