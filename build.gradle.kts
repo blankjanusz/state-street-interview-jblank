@@ -13,6 +13,8 @@ dependencies {
     implementation("com.google.guava:guava:32.1.3-jre")
     testImplementation(platform("org.junit:junit-bom:5.10.0"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.mockito:mockito-core:5.18.0")
+    testImplementation("org.mockito:mockito-junit-jupiter:5.18.0")
 }
 
 tasks.test {

@@ -18,14 +18,6 @@ public class StorageServiceImpl implements StorageService {
     public static final int DEFAULT_MAX_NUMBER_OF_CARS = 10;
     private final int maxNumberOfCars;
 
-    public StorageServiceImpl() {
-        this.maxNumberOfCars = DEFAULT_MAX_NUMBER_OF_CARS;
-    }
-
-    public StorageServiceImpl(int maxNumberOfCars) {
-        this.maxNumberOfCars = maxNumberOfCars;
-    }
-
     private final Map<String, Car> vinToCar = new HashMap<>();
     private final StampedLock carsLock = new StampedLock();
 
@@ -34,6 +26,15 @@ public class StorageServiceImpl implements StorageService {
 
     private final List<Reservation> reservations = new ArrayList<>();
     private final StampedLock reservationsLock = new StampedLock();
+
+
+    public StorageServiceImpl() {
+        this.maxNumberOfCars = DEFAULT_MAX_NUMBER_OF_CARS;
+    }
+
+    public StorageServiceImpl(int maxNumberOfCars) {
+        this.maxNumberOfCars = maxNumberOfCars;
+    }
 
     @Override
     public void addCar(Car car) throws StorageException {
@@ -98,14 +99,22 @@ public class StorageServiceImpl implements StorageService {
 
     @Override
     public void removeClient(String peselNumber) throws StorageException {
-        long stamp = clientsLock.writeLock();
+        long clientStamp = clientsLock.writeLock();
+        long reservationStamp = reservationsLock.writeLock();
+
         try {
             if (peselToClient.get(peselNumber) == null) {
                 throw new StorageException("Client with pesel number " + peselNumber + " not present in the storage");
             }
             peselToClient.remove(peselNumber);
+
+            List<Reservation> clientReservations = filterReservations(existingReservation ->
+                    existingReservation.client().peselNumber().equals(peselNumber));
+            clientReservations.forEach(reservations::remove);
+
         } finally {
-            clientsLock.unlockWrite(stamp);
+            clientsLock.unlockWrite(clientStamp);
+            reservationsLock.unlock(reservationStamp);
         }
     }
 
@@ -127,14 +136,30 @@ public class StorageServiceImpl implements StorageService {
 
     @Override
     public void addReservation(Reservation reservation) throws StorageException {
-        long stamp = reservationsLock.writeLock();
+        long reservationStamp = reservationsLock.writeLock();
+        long clientStamp = clientsLock.writeLock();
+        long carStamp = carsLock.writeLock();
+
         try {
             if (reservations.contains(reservation)) {
                 throw new StorageException("Reservation " + reservation + " already present in the storage");
             }
+            if (!peselToClient.containsKey(reservation.client().peselNumber())) {
+                throw new StorageException("Unknown client with pesel number " + reservation.client().peselNumber());
+            }
+            String carVin = reservation.car().vinNumber();
+            Car car = vinToCar.get(carVin);
+            if (car == null) {
+                throw new StorageException("Unknown car with VIN " + carVin);
+            }
+            if (car.carStatus() == UNAVAILABLE) {
+                throw new StorageException("Car with VIN " + carVin + " is unavailable");
+            }
             reservations.add(reservation);
         } finally {
-            reservationsLock.unlockWrite(stamp);
+            reservationsLock.unlockWrite(reservationStamp);
+            clientsLock.unlock(clientStamp);
+            carsLock.unlock(carStamp);
         }
     }
 

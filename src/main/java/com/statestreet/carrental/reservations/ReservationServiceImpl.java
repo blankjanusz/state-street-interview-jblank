@@ -42,12 +42,11 @@ public class ReservationServiceImpl implements ReservationService {
             writeLock.lock();
 
             List<Reservation> collidingReservations = storageService.getReservations(existingReservation ->
-                    existingReservation.client().equals(newReservation.client()) &&
-                            existingReservation.car().vinNumber().equals(newReservation.car().vinNumber()) &&
-                            LocalDateTimeUtil.periodsOverlap(
-                                    existingReservation.startDateTime(), existingReservation.endDateTime(),
-                                    newReservation.startDateTime(), newReservation.endDateTime()
-                            ));
+                    existingReservation.car().vinNumber().equals(newReservation.car().vinNumber()) &&
+                    LocalDateTimeUtil.periodsOverlap(
+                            existingReservation.startDateTime(), existingReservation.endDateTime(),
+                            newReservation.startDateTime(), newReservation.endDateTime()
+                    ));
 
             if (!collidingReservations.isEmpty()) {
                 throw new ReservationException("Colliding reservations " + collidingReservations);
